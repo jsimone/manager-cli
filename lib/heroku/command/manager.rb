@@ -58,6 +58,75 @@ class Heroku::Command::Manager < Heroku::Command::BaseWithApp
     end
   end
 
+
+  # manager:migrate (--to|--from) ORG_NAME [--team TEAM_NAME]
+  #
+  # move all apps between a team an an org
+  #
+  # --team TEAM      # Team to transfer applications from/to
+  # --to ORG         # Transfer all applications from TEAM to ORG
+  # --from ORG       # Transfer all applications from ORG to TEAM
+  #
+  def migrate
+    to = options[:to]
+    from = options[:from]
+    team = options[:team]
+
+    if to == nil && from == nil
+      raise Heroku::Command::CommandFailed, "No organization specified.\nSpecify which organization to transfer to or from with --to <org name> or --from <org name>"
+    end
+
+    if team == nil
+      raise Heroku::Command::CommandFailed, "No team specified.\nSpecify which team to transfer applications to/from with --team <team name>"
+    end
+
+    begin
+      team_apps = json_decode(heroku.get("/v3/teams/#{team}"))["apps"]
+      puts "Migrating the following apps from team #{team}:"
+      team_apps.each { |a|
+        puts "    #{a}"
+      }
+      print_and_flush("Transferring apps to your personal account...")
+      resp = heroku.post("/v3/teams/personal/apps", "apps[#{team_apps.join("]=1&apps[")}]=1")
+      if resp.code == 200
+        print_and_flush " done\n"
+      else
+        print_and_flush " failed!\n"
+        raise Heroku::Command::CommandFailed, "Migration failed while transferring apps to your personal account.\nCheck the #{team} team and your personal account to find the apps.\nNo apps where transferred to the organization."
+      end
+      print_and_flush("Transferring apps from your personal account to the #{to} organization...\n")
+      team_apps.each { |a| 
+        print_and_flush("    #{a}...")
+        response = RestClient.post("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{to}/app", json_encode({ "app_name" => a }), :content_type => :json)
+        if response.code == 201
+          print_and_flush(" transferred\n")
+        else
+          print_and_flush(" failed!\n")
+        end
+      }
+
+    rescue RestClient::ResourceNotFound => e
+      raise Heroku::Command::CommandFailed, "No such team: '#{team}' (perhaps you don't have access?)"
+    end
+
+    # if to != nil
+    #   print_and_flush("Transferring #{app} to #{to}...")
+    #   response = RestClient.post("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{to}/app", json_encode({ "app_name" => app }), :content_type => :json)
+    #   if response.code == 201
+    #     print_and_flush(" done\n")
+    #   else
+    #     print_and_flush("failed\nAn error occurred: #{response.code}\n#{response}")      
+    #   end
+    # else
+    #   print_and_flush("Transferring #{app} from #{from} to your personal account...")
+    #   response = RestClient.post("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{from}/app/#{app}/transfer-out", "")
+    #   if response.code == 200
+    #     print_and_flush(" done\n")
+    #   else
+    #     print_and_flush("failed\nAn error occurred: #{response.code}\n#{response}")      
+    #   end
+    # end
+  end
   # manager:orgs
   #
   # list organization accounts that you have access to
