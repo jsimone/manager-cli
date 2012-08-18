@@ -6,23 +6,6 @@ require 'rest_client'
 class Heroku::Command::Manager < Heroku::Command::BaseWithApp
   MANAGER_HOST = ENV['MANAGER_HOST'] || "manager-api.heroku.com"
 
-  # transfer
-  #
-  # transfer an app to an organization account
-  #
-  def index
-    display "Commands:"
-    display "heroku manager:users --org ORG_NAME"
-    display "heroku manager:apps --org ORG_NAME"
-    display "heroku manager:transfer (--to|--from) ORG_NAME [--app APP_NAME]"
-    display "heroku manager:add_user --org ORG_NAME --user USER_EMAIL --role ROLE"
-    display "heroku manager:add_contributor_to_app --org ORG_NAME --user USER_EMAIL [--app APP_NAME]"
-    display "Heroku Teams Migration Commands:"
-    display "heroku manager:team_to_org --team TEAM_NAME --org ORG_NAME"
-    display "heroku manager:org_to_team --org ORG_NAME --team TEAM_NAME"
-
-  end
-
   # manager:transfer (--to|--from) ORG_NAME [--app APP_NAME]
   #
   # transfer an app to or from an organization account
@@ -369,6 +352,7 @@ class Heroku::Command::Manager < Heroku::Command::BaseWithApp
     #   end
     # end
   end
+
   # manager:orgs
   #
   # list organization accounts that you have access to
@@ -388,6 +372,37 @@ class Heroku::Command::Manager < Heroku::Command::BaseWithApp
       end
     end
   end
+
+  # manager:events --org ORG_NAME [--app APP_NAME]
+  #
+  # list audit events for an org
+  #
+  # -o, --org ORG        # Org to list events for
+  #
+  def events
+    org = options[:org]
+    app_name = options[:app]
+
+    if org == nil
+      raise Heroku::Command::CommandFailed, "No organization specified. Use the -o --org option to specify an organization."
+    end
+    begin
+      if app_name == nil
+        json_decode(RestClient.get("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/events")).each { |r|
+          print_and_flush "#{Time.at(r["time_in_millis_since_epoch"]/1000)} #{r["actor"]} #{r["action"]} #{r["app"]}\n"
+        }
+      else
+        json_decode(RestClient.get("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/app/#{app_name}/events")).each { |r|
+          print_and_flush "#{Time.at(r["time_in_millis_since_epoch"]/1000)} #{r["actor"]} #{r["action"]} #{r["app"]}\n"
+        }
+      end
+    rescue => e
+      print_and_flush("An error occurred: #{e}\n")
+    end
+
+  end
+
+
 
   protected
   def api_key
