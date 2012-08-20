@@ -388,14 +388,28 @@ class Heroku::Command::Manager < Heroku::Command::BaseWithApp
     end
     begin
       if app_name == nil
-        json_decode(RestClient.get("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/events"))["events"].each { |r|
-          print_and_flush "#{Time.at(r["time_in_millis_since_epoch"]/1000)} #{r["actor"]} #{r["action"]} #{r["app"]}\n"
-        }
+        path = "/v1/organization/#{org}/events"
       else
-        json_decode(RestClient.get("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/app/#{app_name}/events"))["events"].each { |r|
-          print_and_flush "#{Time.at(r["time_in_millis_since_epoch"]/1000)} #{r["actor"]} #{r["action"]} #{r["app"]}\n"
-        }
+        path = "/v1/organization/#{org}/app/#{app_name}/events" 
       end
+      
+        go = true
+
+        while(go) 
+          resp = json_decode(RestClient.get("https://:#{api_key}@#{MANAGER_HOST}#{path}"))
+
+          resp["events"].each { |r|
+            print_and_flush "#{Time.at(r["time_in_millis_since_epoch"]/1000)} #{r["actor"]} #{r["action"]} #{r["app"]}\n"
+          }
+
+          go = resp.has_key?("older") 
+          if go && confirm("Fetch More Results? (y/n)")
+             path = resp["older"]   
+          else 
+              go = false 
+          end
+      end 
+
     rescue => e
       print_and_flush("An error occurred: #{e}\n")
     end
