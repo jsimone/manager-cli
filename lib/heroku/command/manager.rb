@@ -399,7 +399,7 @@ class Heroku::Command::Manager < Heroku::Command::BaseWithApp
           resp = json_decode(RestClient.get("https://:#{api_key}@#{MANAGER_HOST}#{path}"))
 
           resp["events"].each { |r|
-            print_and_flush "#{Time.at(r["time_in_millis_since_epoch"]/1000)} #{r["actor"]} #{r["action"]} #{r["app"]}\n"
+            print_and_flush "#{Time.at(r["time_in_millis_since_epoch"]/1000)} #{r["actor"]} #{r["action"]} #{r["app"]} #{json_encode(r["attributes"])}\n"
           }
 
           go = resp.has_key?("older") 
