@@ -388,11 +388,11 @@ class Heroku::Command::Manager < Heroku::Command::BaseWithApp
     end
     begin
       if app_name == nil
-        json_decode(RestClient.get("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/events")).each { |r|
+        json_decode(RestClient.get("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/events"))["events"].each { |r|
           print_and_flush "#{Time.at(r["time_in_millis_since_epoch"]/1000)} #{r["actor"]} #{r["action"]} #{r["app"]}\n"
         }
       else
-        json_decode(RestClient.get("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/app/#{app_name}/events")).each { |r|
+        json_decode(RestClient.get("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/app/#{app_name}/events"))["events"].each { |r|
           print_and_flush "#{Time.at(r["time_in_millis_since_epoch"]/1000)} #{r["actor"]} #{r["action"]} #{r["app"]}\n"
         }
       end
