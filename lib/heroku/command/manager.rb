@@ -373,6 +373,212 @@ class Heroku::Command::Manager < Heroku::Command::BaseWithApp
     end
   end
 
+  # manager:tags  --org ORG_NAME
+  #
+  # show the tags and their assignments in the org
+  #
+  # -o, --org  ORG     # Org to show tag info for
+  def tags
+    org = options[:org] 
+    if org == nil 
+      raise Heroku::Command::CommandFailed, "No organization specified. Use the -o --org option to specify an organization."
+    end 
+
+    resp = RestClient.get("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/tags")
+    puts resp
+
+  end
+
+  # manager:tag_create  --org ORG_NAME --tag TAG_NAME
+  #
+  # create a tag in an org
+  #
+  # -o, --org  ORG     # Org to create tag in
+  # -t, --tag  TAG     # tag to create 
+  def tag_create
+    org = options[:org] 
+    tag = options[:tag]
+    if tag == nil 
+      raise Heroku::Command::CommandFailed, "No tag specified. Use the -t --tag option to specify a tag."
+    end 
+    if org == nil 
+      raise Heroku::Command::CommandFailed, "No organization specified. Use the -o --org option to specify an organization."
+    end 
+
+    RestClient.post("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/tags/#{tag}",""){ |response, request, result, &block|
+       case response.code
+       when 201
+          display("tag created")
+       when 302
+          display("tag already exists")
+       else 
+          fail("failed to create tag")
+       end
+    }
+
+  end 
+ 
+  # manager:tag_destroy  --org ORG_NAME --tag TAG_NAME
+  #
+  # destroy a tag in an org, must not be assigned to a user or app
+  #
+  # -o, --org  ORG     # Org to destroy tag in
+  # -t, --tag  TAG     # tag to destroy 
+  def tag_destroy
+    org = options[:org]
+    tag = options[:tag]
+    if tag == nil
+      raise Heroku::Command::CommandFailed, "No tag specified. Use the -t --tag option to specify a tag."
+    end
+    if org == nil
+      raise Heroku::Command::CommandFailed, "No organization specified. Use the -o --org option to specify an organization."
+    end
+
+    RestClient.delete("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/tags/#{tag}"){ |response, request, result, &block|
+       case response.code
+       when 204
+          display("tag destroyed")
+       when 500
+          display("unable to destroy tag, run heroku manager:tags to see if it is assigned")
+       else
+          fail("failed to destroy tag")
+       end
+    }
+
+  end
+
+  # manager:tag_app  --org ORG_NAME --tag TAG_NAME --app APP_NAME
+  #
+  # tag an app
+  #
+  # -o, --org  ORG     # Org 
+  # -t, --tag  TAG     # tag to add  
+  # -a, --app  APP     # app to tag
+  def tag_app
+    org = options[:org] 
+    tag = options[:tag]
+    app = options[:app]
+    if tag == nil 
+      raise Heroku::Command::CommandFailed, "No tag specified. Use the -t --tag option to specify a tag."
+    end 
+    if org == nil 
+      raise Heroku::Command::CommandFailed, "No organization specified. Use the -o --org option to specify an organization."
+    end
+    if app == nil 
+      raise Heroku::Command::CommandFailed, "No app specified. Use the -a --app option to specify an app."
+    end
+
+    RestClient.post("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/app/#{app}/tags/#{tag}",""){ |response, request, result, &block|
+       case response.code
+       when 201
+          display("tagged app #{app} ")
+       when 302
+          display("tag already exists on #{app}")
+       else
+          fail("failed to create tag on #{app}")
+       end
+    }
+
+
+  end 
+
+  # manager:untag_app  --org ORG_NAME --tag TAG_NAME --app APP_NAME
+  #
+  # untag an app
+  #
+  # -o, --org  ORG     # Org 
+  # -t, --tag  TAG     # tag to add  
+  # -a, --app  APP     # app to tag
+  def untag_app
+    org = options[:org]
+    tag = options[:tag]
+    app = options[:app]
+    if tag == nil
+      raise Heroku::Command::CommandFailed, "No tag specified. Use the -t --tag option to specify a tag."
+    end
+    if org == nil
+      raise Heroku::Command::CommandFailed, "No organization specified. Use the -o --org option to specify an organization."
+    end
+    if app == nil
+      raise Heroku::Command::CommandFailed, "No app specified. Use the -a --app option to specify an app."
+    end
+
+    RestClient.delete("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/app/#{app}/tags/#{tag}"){ |response, request, result, &block|
+       case response.code
+       when 204
+          display("untagged app #{app} ")
+       else
+          fail("failed to untag #{app}")
+       end
+    }
+
+
+  end
+ 
+  # manager:tag_user  --org ORG_NAME --tag TAG_NAME --user EMAIL
+  #
+  # tag a user
+  #
+  # -o, --org  ORG     # Org 
+  # -t, --tag  TAG     # tag to add  
+  # -u, --user  EMAIL   # user to tag
+  def tag_user
+    org = options[:org]
+    tag = options[:tag]
+    user = options[:user]
+    if tag == nil
+      raise Heroku::Command::CommandFailed, "No tag specified. Use the -t --tag option to specify a tag."
+    end
+    if org == nil
+      raise Heroku::Command::CommandFailed, "No organization specified. Use the -o --org option to specify an organization."
+    end
+    if user == nil
+      raise Heroku::Command::CommandFailed, "No user specified. Use the -u --user option to specify a user."
+    end
+
+    RestClient.post("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/user/#{user}/tags/#{tag}",""){ |response, request, result, &block|
+       case response.code
+       when 201
+          display("tagged #{user}")
+       when 302
+          display("tag already exist on #{user}")
+       else
+          fail("failed to create tag on #{user}")
+       end
+    }
+  end
+
+  # manager:untag_user  --org ORG_NAME --tag TAG_NAME --user EMAIL
+  #
+  # untag a user
+  #
+  # -o, --org  ORG     # Org 
+  # -t, --tag  TAG     # tag to add  
+  # -u, --user  EMAIL   # user to tag
+  def untag_user
+    org = options[:org]
+    tag = options[:tag]
+    user = options[:user]
+    if tag == nil 
+      raise Heroku::Command::CommandFailed, "No tag specified. Use the -t --tag option to specify a tag."
+    end 
+    if org == nil 
+      raise Heroku::Command::CommandFailed, "No organization specified. Use the -o --org option to specify an organization."
+    end 
+    if user == nil 
+      raise Heroku::Command::CommandFailed, "No user specified. Use the -u --user option to specify a user."
+    end 
+
+    RestClient.delete("https://:#{api_key}@#{MANAGER_HOST}/v1/organization/#{org}/user/#{user}/tags/#{tag}"){ |response, request, result, &block|
+       case response.code
+       when 204 
+          display("untagged #{user}")
+       else
+          fail("failed to untag #{user}")
+       end 
+    }   
+  end 
+
   # manager:events --org ORG_NAME [--app APP_NAME]
   #
   # list audit events for an org
